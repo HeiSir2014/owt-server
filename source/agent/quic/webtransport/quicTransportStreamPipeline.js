@@ -19,7 +19,7 @@ const addon = require('../build/Release/quic');
  * `AVStreamIn`.
  */
 module.exports = class QuicTransportStreamPipeline {
-  constructor(contentSessionId, updateStatus) {
+  constructor(contentSessionId) {
     // `contentSessionId` is the ID of publication or subscription.
     this._contentSessionId = contentSessionId;
     this._quicStream = null;
@@ -30,15 +30,6 @@ module.exports = class QuicTransportStreamPipeline {
       if (this.bindRouterAsSourceCallback) {
         this.bindRouterAsSourceCallback(stream);
       }
-      if (!this._notifiedReady) {
-        updateStatus({
-          type: 'ready',
-          audio: false,
-          video: false,
-          data: true,
-          simulcast: false
-        });
-      }
     };
 
     this.addDestination = function(name, dst) {
@@ -46,10 +37,6 @@ module.exports = class QuicTransportStreamPipeline {
     };
 
     this.receiver = function(kind) {
-      if (kind !== 'data') {
-        log.error('Unsupported receiver.');
-        return null;
-      }
       return this._quicStream;
     };
 

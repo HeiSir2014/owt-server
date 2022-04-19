@@ -16,6 +16,7 @@
       'AudioFramePacketizerWrapper.cc',
       'VideoFrameConstructorWrapper.cc',
       'VideoFramePacketizerWrapper.cc',
+      'CallBaseWrapper.cc',
       'addon.cc',
     ],
     'dependencies': ['librtcadapter'],
@@ -63,7 +64,7 @@
     'variables': {
       'source_rel_dir': '../../..', # relative source dir path
       'source_abs_dir%': '<(module_root_dir)/../../..', # absolute source dir path
-      'webrtc_abs_dir%': '<(module_root_dir)/../../../../third_party/webrtc-m79' # absolute webrtc dir path
+      'webrtc_abs_dir%': '<(module_root_dir)/../../../../third_party/webrtc-m88' # absolute webrtc dir path
     },
     'sources': [
         '<(source_rel_dir)/core/rtc_adapter/RtcAdapter.cc',
@@ -113,8 +114,8 @@
           'cflags_cc' : [
             '-Wall', '-O3', '-g' , '-std=gnu++14', '-fexceptions',
             '-nostdinc++',
-            '-isystem<(webrtc_abs_dir)/src/buildtools/third_party/libc++/trunk/include',
-            '-isystem<(webrtc_abs_dir)/src/buildtools/third_party/libc++abi/trunk/include'
+            '-I<(webrtc_abs_dir)/src/buildtools/third_party/libc++/trunk/include',
+            '-I<(webrtc_abs_dir)/src/buildtools/third_party/libc++abi/trunk/include'
           ]
       }]
     ]

@@ -11,6 +11,10 @@ var InternalOut = internalIO.Out;
 var avstream = require('../avstreamLib/build/Release/avstream');
 var AVStreamIn = avstream.AVStreamIn;
 var AVStreamOut = avstream.AVStreamOut;
+
+const MediaFrameMulticaster = require(
+    '../mediaFrameMulticaster/build/Release/mediaFrameMulticaster');
+
 var logger = require('../logger').logger;
 var path = require('path');
 var Connections = require('./connections');
@@ -41,6 +45,20 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         // FIXME: There should be a better chance to start playing.
         setTimeout(function () {connection.startPlay();}, 6000);
         callback('onStatus', {type: 'ready'});
+
+        var dispatcher = new MediaFrameMulticaster();
+        var source = dispatcher.source();
+        connection.addDestination('audio', dispatcher);
+        connection.addDestination('video', dispatcher);
+        source.close = function () {
+            connection.removeDestination('audio', dispatcher);
+            connection.removeDestination('video', dispatcher);
+            connection.close();
+            dispatcher.close();
+        };
+        connection.source = function () {
+            return source;
+        };
 
         return connection;
     };
@@ -116,7 +134,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             return callback('callback', {type: 'failed', reason: 'Create Connection failed'});
         }
 
-        router.addLocalSource(connectionId, connectionType, conn)
+        router.addLocalSource(connectionId, connectionType, conn.source())
         .then(onSuccess(callback), onError(callback));
     };
 

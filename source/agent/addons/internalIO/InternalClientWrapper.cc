@@ -88,23 +88,37 @@ NAN_METHOD(InternalClient::close) {
   obj->me = nullptr;
 }
 
-NAN_METHOD(InternalClient::addDestination) {
-  InternalClient* obj = ObjectWrap::Unwrap<InternalClient>(info.Holder());
-  owt_base::InternalClient* me = obj->me;
+NAN_METHOD(InternalClient::addDestination)
+{
+    InternalClient* obj = ObjectWrap::Unwrap<InternalClient>(info.Holder());
+    owt_base::InternalClient* me = obj->me;
 
-  Nan::Utf8String param0(Nan::To<v8::String>(info[0]).ToLocalChecked());
-  std::string track = std::string(*param0);
+    Nan::Utf8String param0(Nan::To<v8::String>(info[0]).ToLocalChecked());
+    std::string track = std::string(*param0);
 
-  FrameDestination* param =
-    ObjectWrap::Unwrap<FrameDestination>(
-      info[1]->ToObject(Nan::GetCurrentContext()).ToLocalChecked());
-  owt_base::FrameDestination* dest = param->dest;
+    bool isNanDestination(false);
+    if (info.Length() >= 3) {
+        isNanDestination = Nan::To<bool>(info[2]).FromJust();
+    }
 
-  if (track == "audio") {
-    me->addAudioDestination(dest);
-  } else if (track == "video") {
-    me->addVideoDestination(dest);
-  }
+    owt_base::FrameDestination* dest(nullptr);
+    if (isNanDestination) {
+        NanFrameNode* param = Nan::ObjectWrap::Unwrap<NanFrameNode>(
+            Nan::To<v8::Object>(info[1]).ToLocalChecked());
+        dest = param->FrameDestination();
+    } else {
+        FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(
+            Nan::To<v8::Object>(info[1]).ToLocalChecked());
+        dest = param->dest;
+    }
+
+    if (track == "audio") {
+        me->addAudioDestination(dest);
+    } else if (track == "video") {
+        me->addVideoDestination(dest);
+    } else if (track == "data") {
+        me->addDataDestination(dest);
+    }
 }
 
 NAN_METHOD(InternalClient::removeDestination) {
@@ -114,15 +128,27 @@ NAN_METHOD(InternalClient::removeDestination) {
   Nan::Utf8String param0(Nan::To<v8::String>(info[0]).ToLocalChecked());
   std::string track = std::string(*param0);
 
-  FrameDestination* param =
-    ObjectWrap::Unwrap<FrameDestination>(
-      info[1]->ToObject(Nan::GetCurrentContext()).ToLocalChecked());
-  owt_base::FrameDestination* dest = param->dest;
+  owt_base::FrameDestination* dest(nullptr);
+  bool isNanDestination(false);
+  if (info.Length() >= 3) {
+      isNanDestination = Nan::To<bool>(info[2]).FromJust();
+  }
+  if (isNanDestination) {
+      NanFrameNode* param = Nan::ObjectWrap::Unwrap<NanFrameNode>(
+          Nan::To<v8::Object>(info[1]).ToLocalChecked());
+      dest = param->FrameDestination();
+  } else {
+      FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(
+          Nan::To<v8::Object>(info[1]).ToLocalChecked());
+      dest = param->dest;
+  }
 
   if (track == "audio") {
-    me->removeAudioDestination(dest);
+      me->removeAudioDestination(dest);
   } else if (track == "video") {
-    me->removeVideoDestination(dest);
+      me->removeVideoDestination(dest);
+  } else if (track == "data") {
+      me->removeDataDestination(dest);
   }
 }
 

@@ -362,36 +362,41 @@ This a format for client reconnects.
 ```
   object(PublicationRequest)::
     {
-     media: object(WebRTCMediaOptions) | null,
+     media: object(MediaOptions) | null,
      data: true | false,
      transport: object(TransportOptions),
      attributes: object(ClientDefinedAttributes) | null
     }
 ```
 
-A publication can send either media or data, but a QUIC *transport* channel can support multiple stream for both media and data. Setting `media:null` and `data:false` is meaningless, so it should be rejected by server. Protocol itself doesn't forbit to create WebRTC connection for data. However, SCTP data channel is not implemented at server side, so currently `data:true` is only support by QUIC transport channels. 
+A publication can send either media or data. Setting `media:null` and `data:false` is meaningless, so it should be rejected by server. Protocol itself doesn't forbid to create WebRTC connection for data. However, SCTP data channel is not implemented at server side, so currently `data:true` is only support by WebTransport channels.
 
 ```
-  object(WebRTCMediaOptions)::
+  object(MediaOptions)::
       {
         tracks: [
           {
             type: "audio" | "video",
-            mid: string(MID),
+            mid: string(MID) | undefined,  /* undefined if transport's type is "quic" */
             source: "mic" | "screen-cast" | ... | "encoded-file",
+            format: object(AudioFormat) | object(VideoFormat) | undefined /* undefined if transport's type is "webrtc" */
           }
         ]
       }
     }
 ```
 
+
 **ResponseData**: The PublicationResult object with following definition if **ResponseStatus** is “ok”:
 
+```
   object(PublicationResult)::
     {
       transportId: string(transportId),  // Can be reused in the following publication or subscription.
      id: string(SessionId) //will be used as the stream id when it gets ready.
     }
+```
+
 ### 3.3.8 Participant Stops Publishing a Stream to Room
 **RequestName**: “unpublish”<br>
 
@@ -552,6 +557,19 @@ A publication can send either media or data, but a QUIC *transport* channel can 
        candidate: string(candidateSdp)
       }
 
+    // Experimental feature, subject to change.
+    object(RtpConfig)::
+    {
+      ssrc:string,
+      sendParameters:object(RTCRtpSendParameters)  // [RTCRtpSendParameters](https://www.w3.org/TR/webrtc/#rtcsendrtpparameters) defined in WebRTC 1.0.
+    }
+
+    object(RtpSendParameters):RTCRtpSendParameters::
+      {
+        audio: object(RtpConfig) | null,
+        video: object(RtpConfig) | null,
+      }
+
     object(TransportOptions)::
       {
         type: "webrtc" | "quic",
@@ -567,10 +585,11 @@ A publication can send either media or data, but a QUIC *transport* channel can 
   object(TransportProgress)::
     {
       id: string(transportId),
-      status: "soac" | "ready" | "error",
+      status: "soac" | "ready" | "error" | "rtp",
       data: object(OfferAnswer) | object(CandidateMessage)  /*If status equals “soac”*/
           | (undefined/*If status equals “ready” and session is NOT for recording*/
           | string(Reason)/*If status equals “error”*/
+          | object(RtpConfig)  /* if status is "rtp" */
     }
 
   object(SessionProgress)::
@@ -606,4 +625,4 @@ Step 2: Receive a response from server.
 }
 ```
 
-Step 3: Create a new WebTransport or get an existing WebTransport, then create a new BidirectionalStream or SendStream. Write data to stream. The URL of WebTransport should be included in token. WebTransport is shared by all media streams, data streams and signaling which belong to the same client.
+Step 3: Create a new WebTransport or get an existing WebTransport, then create a new BidirectionalStream. Write data to stream. The URL of WebTransport should be included in token. WebTransport is shared by all media streams, data streams and signaling which belong to the same client.

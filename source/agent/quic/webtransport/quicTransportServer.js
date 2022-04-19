@@ -36,7 +36,8 @@ module.exports = class QuicTransportServer extends EventEmitter {
       setTimeout(() => {
         // Must be authenticated in `authenticationTimeout` seconds.
         if (!connection.transportId) {
-          connection.close();
+          connection.close(
+              {closeCode: 0, reason: 'Timeout for authentication.'});
         }
       }, authenticationTimeout * 1000);
       connection.onincomingstream = (stream) => {
@@ -49,14 +50,21 @@ module.exports = class QuicTransportServer extends EventEmitter {
             if (connection.transportId) {
               log.error(
                   'Received a new signaling stream on an authenticated connection. Close connection.')
-              connection.close();
+              connection.close({
+                closeCode: 0,
+                reason:
+                    'Received a new signaling stream on an authenticated connection.'
+              });
             }
             // Signaling stream. Waiting for transport ID then.
           } else if (!connection.transportId) {
             log.error(
                 'Stream ' + streamId +
                 ' added on unauthenticated transport. Close connection.');
-            connection.close();
+            connection.close({
+              closeCode: 0,
+              reason: 'Stream added on unauthenticated transport'
+            });
           } else {
             log.debug(
                 'A new stream ' + streamId + ' is created on transport ' +
@@ -66,6 +74,15 @@ module.exports = class QuicTransportServer extends EventEmitter {
                 this._uuidStringToUint8Array(connection.transportId);
             stream.write(uuidBytes, uuidBytes.length);
           }
+        };
+        stream.ontrackid = (id) => {
+          if (stream.trackId) {
+            log.warn('Duplicate events for track ID.');
+            return;
+          }
+          const trackId = this._uuidBytesToString(new Uint8Array(id))
+          stream.trackId = trackId;
+          this.emit('trackid', stream);
         };
         stream.ondata = (data) => {
           if (stream.contentSessionId === zeroUuid) {
@@ -111,13 +128,14 @@ module.exports = class QuicTransportServer extends EventEmitter {
                   token = JSON.parse(Buffer.from(message, 'base64').toString());
                 } catch (error) {
                   log.error('Invalid token.');
-                  connection.close();
+                  connection.close({closeCode: 0, reason: 'Invalid token.'});
                   return;
                 }
                 this._validateTokenCallback(token).then(result => {
                   if (result !== 'ok') {
                     log.error('Authentication failed.');
-                    connection.close();
+                    connection.close(
+                        {closeCode: 0, reason: 'Authentication failed.'});
                     return;
                   }
                   log.debug('Created connection for transport ID '+connection.transportId);
@@ -142,7 +160,7 @@ module.exports = class QuicTransportServer extends EventEmitter {
             }
             return;
           }
-        }
+        };
       }
     }
   }
@@ -170,6 +188,10 @@ module.exports = class QuicTransportServer extends EventEmitter {
     stream.write(uuidBytes, uuidBytes.length);
     this._streams.set(contentSessionId, stream);
     return stream;
+  }
+
+  getConnection(connectionId) {
+    return this._connections.get(connectionId);
   }
 
   _uuidBytesToString(uuidBytes) {

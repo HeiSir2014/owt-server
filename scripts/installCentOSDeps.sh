@@ -39,6 +39,8 @@ installYumDeps(){
   ${SUDO} yum install centos-release-scl -y
   ${SUDO} yum install devtoolset-7-gcc* -y
   ${SUDO} yum install docbook2X -y
+  ${SUDO} yum install libffi-devel -y
+  ${SUDO} yum install ca-certificates -y
 }
 
 installRepo(){
@@ -64,13 +66,39 @@ install_mediadeps(){
 }
 
 install_glibc(){
+  local LIST_LIBS=`ls ${PREFIX_DIR}/lib/libc.* 2>/dev/null`
+  if [ "$CHECK_INSTALL" = true ]; then
+    if [[ ! -z $LIST_LIBS ]]; then
+      echo "glibc - Yes"
+    else
+      echo "glibc - No"
+    fi
+    return 0
+  fi
+  [ "$INCR_INSTALL" = true ] && [[ ! -z $LIST_LIBS ]] && \
+  echo "glibc already installed." && return 0
+
   cd $LIB_DIR
-  wget -c http://gnu.mirrors.pair.com/gnu/libc/glibc-2.14.tar.xz
-  tar xvf glibc-2.14.tar.xz
-  cd glibc-2.14
+  wget http://ftp.gnu.org/gnu/glibc/glibc-2.18.tar.gz 
+  tar zxf glibc-2.18.tar.gz
+  cd glibc-2.18
   mkdir -p build && cd build/
-  ../configure --prefix=$PREFIX_DIR
-  make -j4 -s && make install
+  ../configure --prefix=/usr
+  make -j4 && make install
+}
+
+install_python3(){
+  if [ -f /usr/bin/python3 ]; then
+    echo "python3 already installed." && return 0
+  fi
+  cd $LIB_DIR
+  wget https://www.python.org/ftp/python/3.7.0/Python-3.7.0.tar.xz
+  tar xvf Python-3.7.0.tar.xz
+  cd Python-3.7.0
+  ./configure prefix=/usr/local/python3
+  make && make install
+  ln -s /usr/local/python3/bin/python3 /usr/bin/python3
+  cd ../ && rm -r Python-3.7*
 }
 
 cleanup(){
